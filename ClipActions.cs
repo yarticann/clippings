@@ -334,18 +334,20 @@ sealed partial class ReplayShelf
         using (var debounce = new System.Windows.Forms.Timer { Interval = 140 })
         using (var playbackClock = new System.Windows.Forms.Timer { Interval = 100 })
         {
-            var picture = new PictureBox { Left = 16, Top = 12, Width = 622, Height = 290, BackColor = Color.Black, SizeMode = PictureBoxSizeMode.Zoom };
+            var picture = new PictureBox { Left = 16, Top = 12, Width = 622, Height = 290, BackColor = Color.Black, SizeMode = PictureBoxSizeMode.Zoom, AccessibleName = "Clip preview" };
             dialog.Controls.Add(picture);
             int ticks = Math.Max(1, (int)Math.Min(Int32.MaxValue, Math.Floor(length * 100)));
-            var scrub = new TrackBar { Left = 14, Top = 304, Width = 625, Maximum = ticks, TickStyle = TickStyle.None, AccessibleName = "Preview position" };
+            var scrub = new ResizeTrackBar { Left = 14, Top = 304, Width = 625, Maximum = ticks, TickStyle = TickStyle.None, AccessibleName = "Preview position" };
             dialog.Controls.Add(scrub);
             decimal max = (decimal)length;
             var start = new NumericUpDown { Left = 83, Top = 393, Width = 102, Maximum = max, DecimalPlaces = 2, Increment = 0.1M, AccessibleName = "Start time in seconds" };
             var end = new NumericUpDown { Left = 250, Top = 393, Width = 102, Maximum = max, Value = max, DecimalPlaces = 2, Increment = 0.1M, AccessibleName = "End time in seconds" };
             dialog.Controls.Add(start);
             dialog.Controls.Add(end);
-            dialog.Controls.Add(new Label { Text = "Start (s)", Left = 17, Top = 397, Width = 65 });
-            dialog.Controls.Add(new Label { Text = "End (s)", Left = 191, Top = 397, Width = 59 });
+            var startLabel = new Label { Text = "Start (s)", Left = 17, Width = 65 };
+            var endLabel = new Label { Text = "End (s)", Left = 191, Width = 59 };
+            dialog.Controls.Add(startLabel);
+            dialog.Controls.Add(endLabel);
             var markStart = new Button { Left = 373, Top = 390 };
             var markEnd = new Button { Left = 508, Top = 390 };
             StyleButton(markStart, "Set start here", 124);
@@ -411,7 +413,7 @@ sealed partial class ReplayShelf
                     if (child != IntPtr.Zero)
                     {
                         int style = GetPreviewWindowStyle(child, -16);
-                        SetPreviewWindowStyle(child, -16, (style & ~unchecked((int)0x80000000)) | 0x40000000);
+                        SetPreviewWindowStyle(child, -16, (style & ~unchecked((int)0x80CF0000)) | 0x40000000);
                         SetParent(child, picture.Handle);
                         if (GetParent(child) != picture.Handle ||
                             !SetWindowPos(child, IntPtr.Zero, 0, 0, picture.Width, picture.Height, 0x0074))
@@ -448,7 +450,7 @@ sealed partial class ReplayShelf
                     player = new Process
                     {
                         StartInfo = new ProcessStartInfo(ffplay,
-                            "-hide_banner -loglevel error -stats -autoexit -noborder -window_title " + Quote("clippings preview") +
+                            "-hide_banner -loglevel error -stats -autoexit -window_title " + Quote("clippings preview") +
                             " -left -32000 -top -32000 -x " + picture.Width + " -y " + picture.Height +
                             " -ss " + position.ToString(CultureInfo.InvariantCulture) + " -i " + Quote(file.FullName))
                         { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true }
@@ -521,18 +523,44 @@ sealed partial class ReplayShelf
             };
 
             Button save;
-            DialogFooter(dialog, "Save trim…", out save);
-            foreach (Control control in picture.Parent.Controls)
+            DialogFooter(dialog, "Save trim…", out save, minimumBodySize: new Size(390, 330));
+            var body = picture.Parent;
+            Action layoutPreview = delegate
             {
-                if (control == picture) control.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-                else if (control == scrub || control == state) control.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-                else control.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            }
+                bool compact = body.ClientSize.Width < 650;
+                int controlsHeight = compact ? 222 : 184;
+                int previewWidth = body.ClientSize.Width - 32;
+                int previewHeight = body.ClientSize.Height - controlsHeight;
+                body.SuspendLayout();
+                try
+                {
+                    picture.SetBounds(16, 12, previewWidth, previewHeight);
+                    int bottom = picture.Bottom;
+                    scrub.SetBounds(14, bottom + 2, previewWidth + 3, scrub.Height);
+                    play.Top = bottom + 48;
+                    start.Top = end.Top = bottom + 91;
+                    startLabel.Top = endLabel.Top = bottom + 95;
+                    markStart.Location = new Point(compact ? 16 : 373, bottom + (compact ? 126 : 88));
+                    markEnd.Location = new Point(compact ? 151 : 508, markStart.Top);
+                    state.SetBounds(17, bottom + (compact ? 174 : 136), previewWidth, state.Height);
+                }
+                finally { body.ResumeLayout(false); }
+
+            };
+            body.ClientSizeChanged += delegate { layoutPreview(); };
+            bool playbackResizeQueued = false;
             picture.SizeChanged += delegate
             {
-                if (playerWindow != IntPtr.Zero)
-                    SetWindowPos(playerWindow, IntPtr.Zero, 0, 0, picture.Width, picture.Height, 0x0014);
+                if (playerWindow == IntPtr.Zero || playbackResizeQueued) return;
+                playbackResizeQueued = true;
+                picture.BeginInvoke((Action)delegate
+                {
+                    playbackResizeQueued = false;
+                    if (playerWindow != IntPtr.Zero && !picture.IsDisposed)
+                        SetWindowPos(playerWindow, IntPtr.Zero, 0, 0, picture.ClientSize.Width, picture.ClientSize.Height, 0x0014);
+                });
             };
+            layoutPreview();
             dialog.FormClosing += delegate(object sender, FormClosingEventArgs args) { if (exporting) args.Cancel = true; };
             save.Click += async delegate
             {

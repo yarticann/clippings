@@ -153,6 +153,8 @@ sealed partial class ReplayShelf : Form
             catch (UnauthorizedAccessException) { }
         }
 
+        DoubleBuffered = true;
+        ResizeRedraw = true;
         Text = AppName;
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
         BackColor = Background;
@@ -609,11 +611,14 @@ sealed partial class ReplayShelf : Form
     {
         int columns = Math.Max(2, Math.Min(5, grid.ClientSize.Width / 257));
         int width = Math.Max(160, (grid.ClientSize.Width - 22) / columns - 12);
-        foreach (Control card in grid.Controls)
+        var size = new Size(width, width * 9 / 16 + 63);
+        grid.SuspendLayout();
+        try
         {
-            card.Width = width;
-            card.Height = width * 9 / 16 + 63;
+            foreach (Control card in grid.Controls)
+                if (card.Size != size) card.Size = size;
         }
+        finally { grid.ResumeLayout(); }
     }
 
     async void RefreshLibrary(bool rescan = true)
@@ -686,7 +691,7 @@ sealed partial class ReplayShelf : Form
         var previews = new List<Tuple<FileInfo, PictureBox>>();
         foreach (var file in matches.Skip(page * pageSize).Take(pageSize))
         {
-            var card = new Panel { BackColor = Surface, Margin = new Padding(0, 0, 12, 12) };
+            var card = new ResizePanel { BackColor = Surface, Margin = new Padding(0, 0, 12, 12) };
             var picture = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Black, Cursor = Cursors.Hand, AccessibleName = "Play " + file.Name };
             var title = new Label { Text = Path.GetFileNameWithoutExtension(file.Name), Dock = DockStyle.Bottom, Height = 29, Padding = new Padding(9, 6, 0, 0), AutoEllipsis = true };
             ulong fileBytes = (ulong)file.Length;

@@ -67,6 +67,7 @@ sealed partial class ReplayShelf
         public ClipStorageBar()
         {
             DoubleBuffered = true;
+            ResizeRedraw = true;
             AccessibleName = "Clip drive storage";
         }
 

@@ -261,9 +261,18 @@ sealed partial class ReplayShelf
             group.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         }
 
+        bool? compact = null;
+        SizeF lastScale = SizeF.Empty;
+        int contentHeight = 0;
         viewport.Attach(layout, delegate(Size space)
         {
-            bool narrow = space.Width < 790 * form.CurrentAutoScaleDimensions.Width / 96;
+            SizeF scale = form.CurrentAutoScaleDimensions;
+            bool narrow = space.Width < 790 * scale.Width / 96;
+            if (narrow == compact && scale == lastScale)
+                return new Size(Math.Max(430, space.Width), contentHeight);
+
+            compact = narrow;
+            lastScale = scale;
             layout.SuspendLayout();
             layout.ColumnStyles[0].Width = narrow ? 100 : 47;
             layout.ColumnStyles[1].Width = narrow ? 0 : 53;
@@ -278,7 +287,7 @@ sealed partial class ReplayShelf
                     .Where(style => style.SizeType == SizeType.Absolute).Sum(style => style.Height);
                 layout.RowStyles[row].Height = Math.Max(layout.RowStyles[row].Height, height);
             }
-            int contentHeight = layout.Padding.Vertical + (int)layout.RowStyles.Cast<RowStyle>().Sum(style => style.Height);
+            contentHeight = layout.Padding.Vertical + (int)layout.RowStyles.Cast<RowStyle>().Sum(style => style.Height);
             layout.ResumeLayout();
             return new Size(Math.Max(430, space.Width), contentHeight);
         });
@@ -396,7 +405,7 @@ sealed partial class ReplayShelf
             string soundName = settings.SoundName;
             string staging = null;
             System.Media.SoundPlayer soundPreview = null;
-            var volume = new TrackBar { Minimum = 0, Maximum = 100, Value = settings.ClipSoundVolume, TickStyle = TickStyle.None,
+            var volume = new ResizeTrackBar { Minimum = 0, Maximum = 100, Value = settings.ClipSoundVolume, TickStyle = TickStyle.None,
                 SmallChange = 1, LargeChange = 10, Dock = DockStyle.Fill, AccessibleName = "Clip sound volume" };
             var volumeLabel = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight, ForeColor = Muted };
             var volumeRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };

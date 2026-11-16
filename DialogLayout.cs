@@ -8,7 +8,7 @@ sealed partial class ReplayShelf
     sealed class ScrollViewport : Panel
     {
         const int BarWidth = 13;
-        readonly Panel clip = new Panel();
+        readonly ResizePanel clip = new ResizePanel();
         readonly ScrollTrack vertical = new ScrollTrack(true);
         readonly ScrollTrack horizontal = new ScrollTrack(false);
         Control body;
@@ -18,6 +18,8 @@ sealed partial class ReplayShelf
 
         public ScrollViewport()
         {
+            DoubleBuffered = true;
+            ResizeRedraw = true;
             Controls.Add(clip);
             Controls.Add(vertical);
             Controls.Add(horizontal);
@@ -114,6 +116,7 @@ sealed partial class ReplayShelf
         {
             vertical = isVertical;
             DoubleBuffered = true;
+            ResizeRedraw = true;
             SetStyle(ControlStyles.Selectable, true);
             TabStop = true;
             AccessibleName = vertical ? "Vertical scroll" : "Horizontal scroll";
@@ -122,6 +125,7 @@ sealed partial class ReplayShelf
 
         public void SetExtent(int visible, int full)
         {
+            if (window == visible && extent == full) return;
             window = visible;
             extent = full;
             SetValue(value);
@@ -214,13 +218,27 @@ sealed partial class ReplayShelf
         }
     }
 
-    static ScrollViewport WrapDialogBody(Form form, int footerHeight)
+    sealed class ResizePanel : Panel
+    {
+        public ResizePanel()
+        {
+            DoubleBuffered = true;
+            ResizeRedraw = true;
+        }
+    }
+
+    sealed class ResizeTrackBar : TrackBar
+    {
+        public ResizeTrackBar() { ResizeRedraw = true; }
+    }
+
+    static ScrollViewport WrapDialogBody(Form form, int footerHeight, Size? minimumBodySize)
     {
         var initial = form.ClientSize;
-        var body = new Panel { Size = new Size(initial.Width, Math.Max(0, initial.Height - footerHeight)) };
+        var body = new ResizePanel { Size = new Size(initial.Width, Math.Max(0, initial.Height - footerHeight)) };
         var controls = form.Controls.Cast<Control>().ToArray();
         foreach (Control control in controls) body.Controls.Add(control);
-        var viewport = new ScrollViewport { Dock = DockStyle.Fill, Tag = body.Size };
+        var viewport = new ScrollViewport { Dock = DockStyle.Fill, Tag = minimumBodySize ?? body.Size };
         viewport.Attach(body, delegate(Size space) { return (Size)viewport.Tag; });
         RevealInputs(viewport, body);
         form.Controls.Add(viewport);

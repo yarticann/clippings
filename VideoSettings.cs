@@ -233,7 +233,7 @@ sealed partial class ReplayShelf
         return dialog;
     }
 
-    static FlowLayoutPanel DialogFooter(Form form, string saveLabel, out Button save, string cancelLabel = "Cancel")
+    static FlowLayoutPanel DialogFooter(Form form, string saveLabel, out Button save, string cancelLabel = "Cancel", Size? minimumBodySize = null)
     {
         var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 48, Padding = new Padding(9, 5, 9, 2),
             FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
@@ -245,7 +245,7 @@ sealed partial class ReplayShelf
         bar.Controls.Add(cancel);
         form.CancelButton = cancel;
         form.AcceptButton = save;
-        WrapDialogBody(form, bar.Height);
+        WrapDialogBody(form, bar.Height, minimumBodySize);
         form.Controls.Add(bar);
         bar.Layout += delegate
         {
