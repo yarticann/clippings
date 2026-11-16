@@ -1,0 +1,22 @@
+clippings portable for Windows 11 x64
+
+Extract the entire ZIP to a folder you can write to, then open clippings.exe.
+The first launch opens the capture setup guide. No installation is required.
+
+By default, settings and temporary data go in data\ and saved clips go in
+clips\ inside the extracted folder. Keep those folders when moving the app.
+If you select a clip folder outside the portable copy, it keeps that path.
+
+To update: exit clippings from the tray. Open the versioned folder inside
+the new ZIP and copy its contents into your existing clippings folder. Let
+Windows replace the app and bundled tools. Keep data\ and clips\. Then
+reopen clippings.exe. Your saved
+settings carry over and the setup guide is skipped. To run the guide again,
+open Settings > Setup guide.
+
+If the installed copy is already using the same global clip hotkey, close it
+or assign the portable copy a different hotkey.
+
+Included components: FFmpeg, FFprobe, and FFplay (license and build details in
+ffmpeg\). NAudio 1.10.0 is distributed under the MIT license.
+Upstream NAudio source and license: https://github.com/naudio/NAudio/tree/v1.10.0
