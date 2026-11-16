@@ -15,21 +15,34 @@ if (Get-Process clippings,ReplayShelf -ErrorAction SilentlyContinue) {
     throw 'Exit clippings from the system tray before running Setup again.'
 }
 
-function Find-Ffmpeg {
-    $command = Get-Command ffmpeg.exe -ErrorAction SilentlyContinue
-    if ($command) { return $command.Source }
-    Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Filter ffmpeg.exe -Recurse -ErrorAction SilentlyContinue |
-        Where-Object FullName -like '*Gyan.FFmpeg*' | Select-Object -First 1 -ExpandProperty FullName
+function Find-FfmpegFolder {
+    $commands = Get-Command ffmpeg.exe -CommandType Application -All -ErrorAction SilentlyContinue
+    $packages = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+    $folders = @($commands | ForEach-Object { Split-Path -Parent $_.Source })
+    $folders += @(Get-ChildItem -LiteralPath $packages -Directory -Filter 'Gyan.FFmpeg_*' -ErrorAction SilentlyContinue |
+        ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -File -Filter ffmpeg.exe -Recurse -ErrorAction SilentlyContinue } |
+        ForEach-Object DirectoryName)
+    foreach ($folder in $folders | Select-Object -Unique) {
+        if ((Test-Path -LiteralPath (Join-Path $folder 'ffmpeg.exe') -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $folder 'ffprobe.exe') -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $folder 'ffplay.exe') -PathType Leaf)) {
+            return $folder
+        }
+    }
 }
 
-$ffmpeg = Find-Ffmpeg
-if (!$ffmpeg) {
-    winget install --id Gyan.FFmpeg --exact --accept-source-agreements --accept-package-agreements
-    $ffmpeg = Find-Ffmpeg
+$ffFolder = Find-FfmpegFolder
+if (!$ffFolder) {
+    if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw 'Windows Package Manager is unavailable. Install a full FFmpeg package with ffmpeg.exe, ffprobe.exe, and ffplay.exe, then run Setup again.'
+    }
+    winget install --id Gyan.FFmpeg --exact --scope user --force --accept-source-agreements --accept-package-agreements
+    $wingetExit = $LASTEXITCODE
+    $ffFolder = Find-FfmpegFolder
+    if (!$ffFolder) {
+        throw "Setup could not find ffmpeg.exe, ffprobe.exe, and ffplay.exe in one folder after running WinGet (exit code $wingetExit). Install the full Gyan.FFmpeg package and run Setup again."
+    }
 }
-if (!$ffmpeg) { throw 'FFmpeg could not be located. Install Gyan.FFmpeg with WinGet and run Setup again.' }
-$ffFolder = Split-Path $ffmpeg
-if (!(Test-Path (Join-Path $ffFolder 'ffprobe.exe'))) { throw 'The FFmpeg folder must also contain ffprobe.exe.' }
 
 if (!(Test-Path (Join-Path $install 'NAudio.dll'))) {
 $package = Join-Path $env:TEMP ('ReplayShelf-' + [Guid]::NewGuid().ToString('N') + '.zip')
