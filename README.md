@@ -1,4 +1,4 @@
-# clippings
+<h1><img src="clippings-logo.png" alt="" width="100" height="100" align="middle"> clippings</h1>
 
 clippings is a no-bullshit, lightweight, and simple clipping software for Windows 11.
 
