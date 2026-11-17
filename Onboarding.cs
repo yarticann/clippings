@@ -99,11 +99,11 @@ sealed partial class ReplayShelf
 
     static string SetupSeenPath { get { return Path.Combine(Data, "setup-seen"); } }
 
-    static bool NeedsStartupGuide(string[] args)
+    static bool NeedsStartupGuide(string data)
     {
-        if (!PortableMode && !Array.Exists(args, value => value == "--setup-guide")) return false;
-        return !File.Exists(SettingsPath) && !File.Exists(SetupSeenPath) &&
-            !File.Exists(Path.Combine(Data, "hotkey.txt"));
+        return !File.Exists(Path.Combine(data, "settings.xml")) &&
+            !File.Exists(Path.Combine(data, "setup-seen")) &&
+            !File.Exists(Path.Combine(data, "hotkey.txt"));
     }
 
     void ShowStartupGuide()

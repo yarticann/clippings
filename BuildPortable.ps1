@@ -1,10 +1,14 @@
 param(
     [string]$ZipPath,
     [string]$FFmpegFolder,
-    [string]$NAudioPath = (Join-Path $env:LOCALAPPDATA 'ReplayShelf\NAudio.dll')
+    [string]$NAudioPath
 )
 
 $ErrorActionPreference = 'Stop'
+if (!$NAudioPath) {
+    . (Join-Path $PSScriptRoot 'SetupPaths.ps1')
+    $NAudioPath = Join-Path (Get-ClippingsInstallPath) 'NAudio.dll'
+}
 $diagnostics = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Diagnostics.cs') -Raw
 $release = [regex]::Match($diagnostics, 'AssemblyInformationalVersion\("(?<version>v\d+\.\d{2})"\)')
 if (!$release.Success) { throw 'Could not read the release version from Diagnostics.cs.' }
@@ -39,6 +43,11 @@ $pending = Join-Path (Split-Path -Parent $ZipPath) ('.clippings-' + [Guid]::NewG
 try {
     New-Item -ItemType Directory -Path $tools -Force | Out-Null
     Copy-Item -LiteralPath $NAudioPath -Destination (Join-Path $bundle 'NAudio.dll')
+    $audioLicense = Join-Path $bundle 'NAudio-LICENSE.txt'
+    Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/naudio/NAudio/f3c2a15379731239363fd0c26d6b5fe8162a5087/license.txt' -OutFile $audioLicense
+    if ((Get-FileHash -LiteralPath $audioLicense).Hash -ne '0027E744E6750BC02408B90C6909A7A33093477083D59A7E2660477E05307689') {
+        throw 'NAudio license did not match the expected release.'
+    }
     foreach ($tool in 'ffmpeg.exe', 'ffprobe.exe', 'ffplay.exe') {
         Copy-Item -LiteralPath (Join-Path $FFmpegFolder $tool) -Destination $tools
     }
@@ -55,7 +64,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the portable ZIP.' }
     $entries = tar.exe -tf $pending
     if ($LASTEXITCODE -ne 0) { throw 'Could not verify the portable ZIP.' }
-    foreach ($name in 'clippings.exe', 'portable.mode', 'NAudio.dll', 'ffmpeg/ffmpeg.exe', 'ffmpeg/ffprobe.exe', 'ffmpeg/ffplay.exe') {
+    foreach ($name in 'clippings.exe', 'portable.mode', 'NAudio.dll', 'NAudio-LICENSE.txt', 'ffmpeg/ffmpeg.exe', 'ffmpeg/ffprobe.exe', 'ffmpeg/ffplay.exe') {
         if ($entries -notcontains "$bundleName/$name") { throw "The ZIP is missing $name." }
     }
     [IO.File]::Move($pending,$ZipPath)

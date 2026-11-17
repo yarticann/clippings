@@ -1,4 +1,6 @@
-$clippingsData = Join-Path $env:LOCALAPPDATA 'ReplayShelf'
+$defaultClippingsInstall = Join-Path $env:LOCALAPPDATA 'clippings'
+$legacyClippingsInstall = Join-Path $env:LOCALAPPDATA 'ReplayShelf'
+$clippingsStateFiles = 'settings.xml', 'setup-seen', 'hotkey.txt'
 $clippingsMenuLink = Join-Path ([Environment]::GetFolderPath('Programs')) 'clippings.lnk'
 
 function Get-ClippingsInstallPath {
@@ -9,7 +11,28 @@ function Get-ClippingsInstallPath {
             return [IO.Path]::GetDirectoryName($shortcut.TargetPath)
         }
     }
-    return $clippingsData
+    foreach ($candidate in @(
+        (Join-Path $defaultClippingsInstall 'clippings.exe'),
+        (Join-Path $legacyClippingsInstall 'clippings.exe'),
+        (Join-Path $legacyClippingsInstall 'ReplayShelf.exe')
+    )) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [IO.Path]::GetDirectoryName($candidate)
+        }
+    }
+    return $defaultClippingsInstall
+}
+
+function Test-ClippingsUpgrade([string]$install) {
+    foreach ($name in 'clippings.exe', 'ReplayShelf.exe') {
+        if (Test-Path -LiteralPath (Join-Path $install $name) -PathType Leaf) { return $true }
+    }
+    foreach ($folder in $defaultClippingsInstall, $legacyClippingsInstall) {
+        foreach ($name in $clippingsStateFiles) {
+            if (Test-Path -LiteralPath (Join-Path $folder $name) -PathType Leaf) { return $true }
+        }
+    }
+    return $false
 }
 
 function Resolve-ClippingsInstallPath([string]$value) {

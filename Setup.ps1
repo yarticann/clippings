@@ -5,11 +5,7 @@ $ErrorActionPreference = 'Stop'
 $previousInstall = Get-ClippingsInstallPath
 $install = if ($InstallPath) { Resolve-ClippingsInstallPath $InstallPath } else { $previousInstall }
 $exe = Join-Path $install 'clippings.exe'
-$updating = (Test-Path -LiteralPath $exe) -or (Test-Path -LiteralPath (Join-Path $previousInstall 'clippings.exe')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'ReplayShelf.exe')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'settings.xml')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'setup-seen')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'hotkey.txt'))
+$updating = (Test-ClippingsUpgrade $install) -or (Test-ClippingsUpgrade $previousInstall)
 New-Item -ItemType Directory -Force -Path $install | Out-Null
 if (Get-Process clippings,ReplayShelf -ErrorAction SilentlyContinue) {
     throw 'Exit clippings from the system tray before running Setup again.'
@@ -36,7 +32,7 @@ if (!$ffFolder) {
     if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
         throw 'Windows Package Manager is unavailable. Install a full FFmpeg package with ffmpeg.exe, ffprobe.exe, and ffplay.exe, then run Setup again.'
     }
-    winget install --id Gyan.FFmpeg --exact --scope user --force --accept-source-agreements --accept-package-agreements
+    winget install --id Gyan.FFmpeg --exact --scope user --force --silent --disable-interactivity --accept-source-agreements --accept-package-agreements
     $wingetExit = $LASTEXITCODE
     $ffFolder = Find-FfmpegFolder
     if (!$ffFolder) {

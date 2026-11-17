@@ -22,12 +22,22 @@ sealed partial class ReplayShelf : Form
     static readonly string AppFolder = AppDomain.CurrentDomain.BaseDirectory;
     static readonly bool PortableMode = File.Exists(Path.Combine(AppFolder, "portable.mode"));
     static readonly string Data = PortableMode ? Path.Combine(AppFolder, "data") :
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ReplayShelf");
+        GetInstalledDataPath(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
     static readonly string DefaultClips = PortableMode ? Path.Combine(AppFolder, "clips") :
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Replay Shelf");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "clippings");
     static readonly string ToolFolder = PortableMode ? Path.Combine(AppFolder, "ffmpeg") :
         File.ReadAllText(Path.Combine(AppFolder, "ffmpeg-path.txt")).Trim();
     static readonly string Ffmpeg = Path.Combine(ToolFolder, "ffmpeg.exe");
+    static string GetInstalledDataPath(string localData)
+    {
+        string legacy = Path.Combine(localData, "ReplayShelf");
+        foreach (string name in new[] { "settings.xml", "setup-seen", "hotkey.txt" })
+        {
+            if (File.Exists(Path.Combine(legacy, name))) return legacy;
+        }
+        return Path.Combine(localData, "clippings");
+    }
+
     readonly FlowLayoutPanel grid = new FlowLayoutPanel();
     readonly ScrollViewport clipViewport = new ScrollViewport();
     readonly Label status = new Label();
@@ -112,7 +122,9 @@ sealed partial class ReplayShelf : Form
         using (var instance = new Mutex(true, InstanceMutexName(), out first))
         {
             if (!first) return;
-            using (var app = new ReplayShelf(args.Contains("--smoke") || args.Contains("--smoke-av")))
+            bool smoke = args.Contains("--smoke") || args.Contains("--smoke-av");
+            bool showGuide = !smoke && NeedsStartupGuide(Data);
+            using (var app = new ReplayShelf(smoke))
             {
                 if (app.smokeMode)
                 {
@@ -125,7 +137,7 @@ sealed partial class ReplayShelf : Form
                         app.Exit();
                     };
                 }
-                if (!app.smokeMode && NeedsStartupGuide(args))
+                if (showGuide)
                     app.Shown += delegate { app.BeginInvoke(new Action(app.ShowStartupGuide)); };
                 if (args.Contains("--tray") && !app.smokeMode)
                 {

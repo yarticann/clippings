@@ -3,12 +3,7 @@ Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 [Windows.Forms.Application]::EnableVisualStyles()
 . (Join-Path $PSScriptRoot 'SetupPaths.ps1')
 $install = Get-ClippingsInstallPath
-$exe = Join-Path $install 'clippings.exe'
-$updating = (Test-Path -LiteralPath $exe) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'ReplayShelf.exe')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'settings.xml')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'setup-seen')) -or
-    (Test-Path -LiteralPath (Join-Path $clippingsData 'hotkey.txt'))
+$updating = Test-ClippingsUpgrade $install
 $desktopLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'clippings.lnk'
 $startupFolder = [Environment]::GetFolderPath('Startup')
 $form = New-Object Windows.Forms.Form
