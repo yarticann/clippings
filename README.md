@@ -15,6 +15,6 @@ clippings is a no-bullshit, lightweight, and simple clipping software for Window
 
 ## Download
 
-[Download the latest release](https://github.com/yarticann/clippings-public/releases/latest) · [Browse all releases](https://github.com/yarticann/clippings-public/releases)
+[Download the latest release](https://github.com/yarticann/clippings/releases/latest) · [Browse all releases](https://github.com/yarticann/clippings/releases)
 
 Under **Assets**, choose the **Setup EXE** to install clippings or the **portable ZIP** to extract and run it.
